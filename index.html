@@ -4,6 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kele-Coran | Officiel</title>
+    
+    <!-- ========================================== -->
+    <!-- AJOUTS POUR LA PWA (APPLICATION MOBILE)    -->
+    <!-- ========================================== -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#000000">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <!-- ========================================== -->
+
     <link href="https://fonts.googleapis.com/css2?family=Amiri&family=Poppins:wght@400;600&display=swap" rel="stylesheet">
     <style>
         :root { --gold: #D4AF37; --green: #064e3b; --black: #000; }
@@ -93,7 +102,6 @@
     <button class="btn btn-gold" id="startBtn">Démarrer</button>
 </div>
 
-<!-- Ajout de la liste des sourates téléchargées -->
 <div class="panel">
     <label>Sourates Téléchargées (Accessibles Hors-ligne)</label>
     <div id="downloadedList" style="font-size:13px; color:#ccc; max-height:120px; overflow-y:auto; padding:10px; background:#111; border-radius:8px; border:1px solid var(--gold); margin-top:5px;">
@@ -121,9 +129,8 @@
     let playlist =[];
     let curIdx = 0;
     let curRep = 0;
-    let curCycleRep = 0; // Ajout gestion répétition du cycle complet
+    let curCycleRep = 0;
 
-    // Charger les sourates (Avec gestion du Cache Hors-Ligne intégrée)
     async function init() {
         try {
             const res = await fetch("https://api.alquran.cloud/v1/surah");
@@ -131,7 +138,6 @@
             localStorage.setItem("surahs_list", JSON.stringify(data));
             document.getElementById('sNum').innerHTML = data.data.map(s => `<option value="${s.number}">${s.number}. ${s.englishName}</option>`).join('');
         } catch (e) {
-            // Lecture locale sans connexion
             const cachedData = JSON.parse(localStorage.getItem("surahs_list"));
             if(cachedData) {
                 document.getElementById('sNum').innerHTML = cachedData.data.map(s => `<option value="${s.number}">${s.number}. ${s.englishName}</option>`).join('');
@@ -142,7 +148,6 @@
         updateDownloadedSurahs();
     }
 
-    // Fonction d'affichage des sourates déjà téléchargées
     function updateDownloadedSurahs() {
         const listDiv = document.getElementById('downloadedList');
         let dls =[];
@@ -166,7 +171,6 @@
         }
     }
 
-    // TÉLÉCHARGEMENT RÉEL (BLOB)
     document.getElementById('dlBtn').onclick = async () => {
         const s = document.getElementById('sNum').value;
         const r = document.getElementById('reciter').value;
@@ -175,7 +179,6 @@
         status.innerText = "Téléchargement en cours...";
         
         try {
-            // 1. Textes
             const resAr = await fetch(`https://api.alquran.cloud/v1/surah/${s}`);
             const resFr = await fetch(`https://api.alquran.cloud/v1/surah/${s}/fr.hamidullah`);
             const dAr = await resAr.json();
@@ -183,31 +186,27 @@
             localStorage.setItem(`s${s}_ar`, JSON.stringify(dAr.data));
             localStorage.setItem(`s${s}_fr`, JSON.stringify(dFr.data));
 
-            // 2. Audio (Vrai téléchargement)
             const cache = await caches.open(CACHE_NAME);
             const ayahs = dAr.data.ayahs;
 
             for (let i = 0; i < ayahs.length; i++) {
                 status.innerText = `Audio : ${i+1}/${ayahs.length}`;
-                // Construction de l'URL EveryAyah (Format 001001.mp3)
                 const sPadded = s.padStart(3, '0');
                 const aPadded = (i+1).toString().padStart(3, '0');
                 const url = `https://everyayah.com/data/${r}/${sPadded}${aPadded}.mp3`;
 
-                // Fetch et mise en cache réelle
                 const resp = await fetch(url);
                 if (!resp.ok) throw new Error("Erreur serveur audio");
                 await cache.put(url, resp);
             }
             status.innerText = "✅ Téléchargement terminé. Mode hors-ligne prêt.";
-            updateDownloadedSurahs(); // Actualiser la liste hors ligne
+            updateDownloadedSurahs();
         } catch (e) {
             status.innerText = "❌ Erreur de téléchargement. Vérifiez votre connexion.";
             console.error(e);
         }
     };
 
-    // LECTURE
     document.getElementById('startBtn').onclick = async () => {
         const s = document.getElementById('sNum').value;
         const vS = parseInt(document.getElementById('vStart').value);
@@ -232,7 +231,7 @@
             }
         }
         
-        curIdx = 0; curRep = 0; curCycleRep = 0; // Réinitialisations ajoutées
+        curIdx = 0; curRep = 0; curCycleRep = 0;
         render();
         play();
     };
@@ -254,7 +253,6 @@
         const cache = await caches.open(CACHE_NAME);
         const cached = await cache.match(item.url);
 
-        // Si en cache, on crée une URL locale, sinon on utilise le web
         audio.src = cached ? URL.createObjectURL(await cached.blob()) : item.url;
         audio.playbackRate = parseFloat(document.getElementById('speed').value);
         
@@ -267,7 +265,6 @@
         document.getElementById('playBtn').innerText = "⏸";
         document.getElementById('status').innerText = `Verset ${item.v} - Répétition ${curRep+1}`;
 
-        // Arrière-plan
         if ('mediaSession' in navigator) {
             navigator.mediaSession.metadata = new MediaMetadata({ title: `Verset ${item.v}`, artist: 'Kele-Coran' });
         }
@@ -281,7 +278,6 @@
         } else {
             curRep = 0; 
             
-            // Vérification de l'enchaînement automatique des versets ajoutée
             if(!document.getElementById('autoNext').checked) {
                 document.getElementById('status').innerText = `Arrêt au verset ${playlist[curIdx].v} (Auto désactivé)`;
                 document.getElementById('playBtn').innerText = "▶";
@@ -292,7 +288,6 @@
             if(curIdx < playlist.length) {
                 play();
             } else {
-                // Vérification de la boucle de répétitions du cycle entier
                 curCycleRep++;
                 if(curCycleRep < parseInt(document.getElementById('repCycle').value)) {
                     curIdx = 0;
@@ -315,15 +310,21 @@
     audio.ontimeupdate = () => {
         document.getElementById('progress').style.width = (audio.currentTime / audio.duration * 100) + "%";
     };
-// === CODE POUR ACTIVER LE MODE 100% HORS-LIGNE (PWA) ===
+
+    init();
+
+    // ==========================================
+    // AJOUT DU SCRIPT POUR ENREGISTRER LA PWA
+    // ==========================================
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js')
-                .then(reg => console.log('Mode 100% Hors-ligne activé !'))
-                .catch(err => console.error('Erreur Hors-ligne:', err));
+            navigator.serviceWorker.register('sw.js')
+            .then(reg => console.log('✅ PWA (Service Worker) installée avec succès !'))
+            .catch(err => console.error('❌ Erreur PWA :', err));
         });
     }
-    init();
+    // ==========================================
+
 </script>
 </body>
-</html>
+        </html>
