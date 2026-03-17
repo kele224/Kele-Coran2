@@ -1,38 +1,26 @@
-const APP_CACHE = "kele-app-core-v1";
+const APP_CACHE_NAME = 'kele-app-interface-v1';
 
-// Les fichiers de base à sauvegarder pour afficher la page sans internet
-const coreFiles = [
-    './',
-    './index.html'
+// Fichiers à sauvegarder pour que l'interface s'affiche hors-ligne
+const urlsToCache =[
+  './',
+  './index.html',
+  'https://fonts.googleapis.com/css2?family=Amiri&family=Poppins:wght@400;600&display=swap'
 ];
 
-// 1. Installation : On télécharge la page web elle-même
+// Installation du Service Worker et mise en cache de l'interface
 self.addEventListener('install', event => {
-    event.waitUntil(
-        caches.open(APP_CACHE).then(cache => {
-            return cache.addAll(coreFiles);
-        })
-    );
-    self.skipWaiting();
+  event.waitUntil(
+    caches.open(APP_CACHE_NAME)
+      .then(cache => cache.addAll(urlsToCache))
+  );
 });
 
-// 2. Activation : On nettoie les anciens caches si besoin
-self.addEventListener('activate', event => {
-    event.waitUntil(self.clients.claim());
-});
-
-// 3. Interception : Si pas d'internet, on affiche la page depuis le téléphone !
+// Interception des requêtes pour les fournir depuis le cache si on est hors-ligne
 self.addEventListener('fetch', event => {
-    event.respondWith(
-        caches.match(event.request).then(cachedResponse => {
-            // Si le fichier (HTML, ou Audio) est dans le téléphone, on le donne !
-            if (cachedResponse) {
-                return cachedResponse;
-            }
-            // Sinon, on essaie d'aller sur internet
-            return fetch(event.request).catch(() => {
-                // Si internet est coupé, on ne fait rien pour ne pas planter
-            });
-        })
-    );
+  event.respondWith(
+    caches.match(event.request)
+      .then(response => {
+        return response || fetch(event.request);
+      })
+  );
 });
