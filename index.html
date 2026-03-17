@@ -315,7 +315,14 @@
     audio.ontimeupdate = () => {
         document.getElementById('progress').style.width = (audio.currentTime / audio.duration * 100) + "%";
     };
-
+// === CODE POUR ACTIVER LE MODE 100% HORS-LIGNE (PWA) ===
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => console.log('Mode 100% Hors-ligne activé !'))
+                .catch(err => console.error('Erreur Hors-ligne:', err));
+        });
+    }
     init();
 </script>
 </body>
